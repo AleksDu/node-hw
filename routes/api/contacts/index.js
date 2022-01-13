@@ -14,7 +14,9 @@ import {
   validateUpdateFavorite,
   validateQuery,
 } from "./validation";
+
 import guard from "../../../middlewares/guard";
+
 const router = new Router();
 
 router.get("/", [guard, validateQuery], getContacts);

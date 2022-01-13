@@ -39,7 +39,6 @@ const addContact = async (req, res, next) => {
 const removeContact = async (req, res, next) => {
   const { id } = req.params;
   const { id: userId } = req.user;
-
   const contact = await repositoryContacts.removeContact(userId, id);
   if (contact) {
     return res
