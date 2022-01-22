@@ -1,30 +1,43 @@
 import { HttpCode } from "../../lib/constants";
-import AuthService from "../../service/auth";
-const authService = new AuthService();
+import authService from "../../service/auth";
+import {
+  EmailService,
+  SenderSendgrid,
+  SenderNodemailer,
+} from "../../service/email";
+import { CustomError } from "../../lib/custom-error";
 
 const registration = async (req, res, next) => {
   const { email } = req.body;
   const isUserExist = await authService.isUserExist(email);
   if (isUserExist) {
-    return res.status(HttpCode.CONFLICT).json({
-      status: "error",
-      code: HttpCode.CONFLICT,
-      message: "Email is already exist",
-    });
+    throw new CustomError(HttpCode.CONFLICT, "Email is already exist");
   }
-  const data = await authService.create(req.body);
-  res.status(HttpCode.OK).json({ status: "success", code: HttpCode.OK, data });
+  const userData = await authService.create(req.body);
+  const emailService = new EmailService(
+    process.env.NODE_ENV,
+    new SenderSendgrid()
+  );
+
+  const isSend = await emailService.sendVerifyEmail(
+    email,
+    userData.name,
+    userData.verifyTokenEmail
+  );
+  delete userData.verifyTokenEmail;
+
+  res.status(HttpCode.CREATED).json({
+    status: "success",
+    code: HttpCode.CREATED,
+    data: { ...userData, isSendEmailVerify: isSend },
+  });
 };
 
 const login = async (req, res, next) => {
   const { email, password } = req.body;
   const user = await authService.getUser(email, password);
   if (!user) {
-    return res.status(HttpCode.UNAUTHORIZED).json({
-      status: "error",
-      code: HttpCode.UNAUTHORIZED,
-      message: "Invalid credentials",
-    });
+    throw new CustomError(HttpCode.UNAUTHORIZED, "Invalid credentials");
   }
   const token = authService.getToken(user);
   await authService.setToken(user.id, token);
@@ -40,4 +53,29 @@ const logout = async (req, res, next) => {
     .json({ status: "success", code: HttpCode.OK, data: {} });
 };
 
-export { registration, login, logout };
+const current = async (req, res, next) => {
+  try {
+    const { email } = req.user;
+    console.log(req.user);
+    if (!req.user.token || !req.user.id) {
+      return res.status(HttpCode.UNAUTHORIZED).json({
+        status: "error",
+        code: HttpCode.UNAUTHORIZED,
+        message: process.env.UNAUTHORIZED,
+      });
+    }
+    res.json({
+      status: "success",
+      code: HttpCode.OK,
+      data: {
+        user: {
+          email,
+        },
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export { registration, login, logout, current };

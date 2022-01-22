@@ -1,4 +1,6 @@
 import Contact from "../model/contact";
+import pkg from "mongoose";
+const { Types } = pkg;
 
 const listContacts = async (
   userId,
@@ -62,10 +64,23 @@ const updateContact = async (userId, contactId, body) => {
   return result;
 };
 
+const getStatisticsContacts = async (id) => {
+  const data = await Contact.aggregate([
+    { $match: { owner: Types.ObjectId(id) } },
+    {
+      $group: {
+        _id: "qweqwe",
+      },
+    },
+  ]);
+  return data;
+};
+
 export default {
   listContacts,
   getContactById,
   removeContact,
   addContact,
   updateContact,
+  getStatisticsContacts,
 };
